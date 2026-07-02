@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime output (regenerated each run)
+out/*.json
+out/*.pdf
+!out/.gitkeep
+
+# Logs
+*.log
+
+# Docker
+.dockerignore
+
+# NEVER commit real API keys
+.env
+.env.local
+*.pem
+*.key
