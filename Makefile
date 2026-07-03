@@ -45,6 +45,41 @@ clean-transcripts:
 	@python -c "from pathlib import Path; [p.unlink() for p in Path('transcripts').glob('*.json')]"
 	@echo "cleaned transcripts/"
 
+# ----- probes ------------------------------------------------------------ #
+
+probe-approval:
+	@python -m probes.probe_approval
+
+probe-agent-failure:
+	@python -m probes.probe_agent_failure
+
+probe-agent-malformed:
+	@python -m probes.probe_agent_malformed
+
+probe-agent-loop:
+	@python -m probes.probe_agent_loop
+
+probe-budget:
+	@python -m probes.probe_budget
+
+probe-append-only:
+	@python -m probes.probe_append_only
+
+probe-idempotency:
+	@python -m probes.probe_idempotency
+
+probe-injection:
+	@python -m probes.probe_injection
+
+probe-unverified-anomaly:
+	@python -m probes.probe_unverified_anomaly
+
+probes-all: probe-approval probe-agent-failure probe-agent-malformed \
+            probe-agent-loop probe-budget probe-append-only \
+            probe-idempotency probe-injection probe-unverified-anomaly
+	@echo ""
+	@echo "✅ ALL PROBES PASSED"
+
 probe-append-only:
 	@echo "[probe-append-only] verifying hash chain rejects mutation..."
 	@python -c "from pipeline.audit import AuditLogger; \
