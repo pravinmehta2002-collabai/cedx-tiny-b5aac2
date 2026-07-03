@@ -1,0 +1,26 @@
+{
+  "agent": "worker_v1",
+  "model": "gpt-4o",
+  "prompt_version": "1.0",
+  "request": {
+    "system": "You are a senior accounting-firm engagement assistant. You draft short, professional deliverables (letters, cover memos, review packets) using ONLY the facts provided. NEVER invent numbers, names, or dates. If a field is missing, leave a bracketed placeholder like [MISSING]. Respond in strict JSON matching the requested schema.",
+    "user": "Draft an accounting engagement deliverable for the following record.\n\nRecord:\n  id: REC-007\n  owner: g.silva\n  deadline: 2026-07-22\n  category: REVIEW\n  amount: 4700.0\n  notes: Standard review, all inputs present.\n\nCategory-specific deliverable:\n  ONBOARDING -> new-client engagement letter\n  RENEWAL    -> annual renewal confirmation\n  REVIEW     -> quarterly review memo\n  REPORT     -> monthly report cover memo\n\nReturn JSON with keys:\n  {\n    \"record_id\": string,\n    \"engagement_type\": one of [ONBOARDING,RENEWAL,REVIEW,REPORT],\n    \"title\": string,\n    \"body\": string (>= 20 chars, professional tone),\n    \"amount\": number (echo the source amount, do NOT change it),\n    \"owner\": string (echo source),\n    \"deadline\": string YYYY-MM-DD (echo source),\n    \"requires_compliance_review\": true if amount >= 18000 else false\n  }"
+  },
+  "response": {
+    "record_id": "REC-007",
+    "engagement_type": "REVIEW",
+    "title": "Review — REC-007",
+    "body": "Quarterly Review Memo\n\nThis memo covers the quarterly review deliverable identified above. Owner g.silva will produce the review packet by 2026-07-22. Engagement fee for this cycle: $4,700.00.",
+    "amount": 4700.0,
+    "owner": "g.silva",
+    "deadline": "2026-07-22",
+    "requires_compliance_review": false,
+    "_model_tier": "strong"
+  },
+  "response_hash": "sha256:da822b4b73c7f64653e7d90cc6dbbe1f02ab8e341d1df9d043947b5e47810034",
+  "delivered_fields_hash": "sha256:f8e0facdd2bf253ad911f6cd25e52f9b1f6149a4d176acd7cc2e8dcafadcffc3",
+  "tokens_in": 229,
+  "tokens_out": 130,
+  "cost_usd": 0.0022,
+  "latency_ms": 400.0
+}

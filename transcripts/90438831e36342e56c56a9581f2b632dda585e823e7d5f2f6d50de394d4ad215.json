@@ -1,0 +1,26 @@
+{
+  "agent": "worker_v1",
+  "model": "gpt-4o-mini",
+  "prompt_version": "1.0",
+  "request": {
+    "system": "You are a senior accounting-firm engagement assistant. You draft short, professional deliverables (letters, cover memos, review packets) using ONLY the facts provided. NEVER invent numbers, names, or dates. If a field is missing, leave a bracketed placeholder like [MISSING]. Respond in strict JSON matching the requested schema.",
+    "user": "Draft an accounting engagement deliverable for the following record.\n\nRecord:\n  id: REC-004\n  owner: d.kapoor\n  deadline: 2026-08-01\n  category: REPORT\n  amount: 6100.0\n  notes: Monthly report bundle.\n\nCategory-specific deliverable:\n  ONBOARDING -> new-client engagement letter\n  RENEWAL    -> annual renewal confirmation\n  REVIEW     -> quarterly review memo\n  REPORT     -> monthly report cover memo\n\nReturn JSON with keys:\n  {\n    \"record_id\": string,\n    \"engagement_type\": one of [ONBOARDING,RENEWAL,REVIEW,REPORT],\n    \"title\": string,\n    \"body\": string (>= 20 chars, professional tone),\n    \"amount\": number (echo the source amount, do NOT change it),\n    \"owner\": string (echo source),\n    \"deadline\": string YYYY-MM-DD (echo source),\n    \"requires_compliance_review\": true if amount >= 18000 else false\n  }"
+  },
+  "response": {
+    "record_id": "REC-004",
+    "engagement_type": "REPORT",
+    "title": "Report — REC-004",
+    "body": "Monthly Report Cover Memo\n\nThis cover memo transmits the monthly report identified above. Owner d.kapoor will circulate final materials by 2026-08-01. Reporting fee: $6,100.00.",
+    "amount": 6100.0,
+    "owner": "d.kapoor",
+    "deadline": "2026-08-01",
+    "requires_compliance_review": false,
+    "_model_tier": "cheap"
+  },
+  "response_hash": "sha256:90438831e36342e56c56a9581f2b632dda585e823e7d5f2f6d50de394d4ad215",
+  "delivered_fields_hash": "sha256:9c0e0093b7390687d3f32f777d6607f0768d767981c0d88e66787db27f150126",
+  "tokens_in": 225,
+  "tokens_out": 130,
+  "cost_usd": 0.00019,
+  "latency_ms": 400.0
+}

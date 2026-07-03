@@ -1,0 +1,22 @@
+{
+  "agent": "verifier_v1",
+  "model": "gpt-4o-mini",
+  "prompt_version": "1.0",
+  "request": {
+    "system": "You are an independent accounting-quality reviewer. Compare a draft deliverable against its source record and detect ANY invented facts, wrong numbers, wrong dates, category mismatches, or structural problems. You have OVERRULE authority. Be strict. Return JSON only.",
+    "user": "Source record:\n{\"id\": \"REC-016\", \"owner\": \"p.larsen\", \"deadline\": \"2026-07-23\", \"category\": \"RENEWAL\", \"amount\": 4750.0, \"notes\": \"Renewal via partner feed.\"}\n\nDraft to review:\n{\"record_id\": \"REC-016\", \"engagement_type\": \"RENEWAL\", \"title\": \"Renewal — REC-016\", \"body\": \"Annual Renewal Confirmation\\n\\nThis confirms the renewal of the annual engagement described above. Owner p.larsen will oversee continuity; the renewal cycle closes on 2026-07-23. Renewal fee: $4,750.00.\", \"amount\": 4750.0, \"owner\": \"p.larsen\", \"deadline\": \"2026-07-23\", \"requires_compliance_review\": false, \"_model_tier\": \"cheap\"}\n\nCheck for:\n  1. amount mismatch (draft.amount must equal source.amount)\n  2. owner/deadline echoed verbatim\n  3. engagement_type matches source.category\n  4. body has no invented client names, sums, or dates\n  5. body is professional and >= 20 chars\n\nReturn JSON with keys:\n  {\n    \"verdict\": \"pass\" | \"fail\" | \"needs_human\",\n    \"reason_code\": null | \"AGENT_HALLUCINATION\" | \"AGENT_MALFORMED\",\n    \"findings\": [array of short strings]\n  }"
+  },
+  "response": {
+    "verdict": "pass",
+    "reason_code": null,
+    "findings": [],
+    "checked_record_id": "REC-016",
+    "_worker_model_tier": "cheap"
+  },
+  "response_hash": "sha256:9cadc545d55e1c30af8d829553791a443e48079782abd5663e99ebf31dfe94f1",
+  "delivered_fields_hash": "sha256:9cadc545d55e1c30af8d829553791a443e48079782abd5663e99ebf31dfe94f1",
+  "tokens_in": 180,
+  "tokens_out": 20,
+  "cost_usd": 5e-05,
+  "latency_ms": 200.0
+}

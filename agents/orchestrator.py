@@ -131,97 +131,88 @@ class Orchestrator:
         r = tr.record
         oc = RecordOutcome(record_id=r.id, status="exception")
 
-        # ---- SUPERSEDED: log + short-circuit ---------------------------- #
+        # ---- SUPERSEDED ---- #
         if tr.superseded_by:
             oc.status = "superseded"
             oc.reason_code = "SUPERSEDED_VERSION"
             oc.reason_class = "B"
             self.log.append(
-                actor=NAME,
-                action="record_superseded",
-                record_id=r.id,
+                actor=NAME, action="record_superseded", record_id=r.id,
                 payload={"superseded_by": tr.superseded_by},
             )
             self._span(r.id, NAME, status="routed")
             return oc
 
-        # ---- BLOCKED by exception queue: emit exception + block --------- #
+        # ---- BLOCKED by exception queue ---- #
         if tr.blocked:
             worst = tr.worst_flag
             oc.reason_code = worst.reason_code
             oc.reason_class = worst.reason_class
             self._span(r.id, NAME, status="routed")
             self.log.append(
-                actor=NAME,
-                action="record_exception",
-                record_id=r.id,
-                payload={
-                    "reason_code": worst.reason_code,
-                    "reason_class": worst.reason_class,
-                    "detail": worst.detail,
-                },
+                actor=NAME, action="record_exception", record_id=r.id,
+                payload={"reason_code": worst.reason_code,
+                         "reason_class": worst.reason_class,
+                         "detail": worst.detail},
             )
-            # FSM: open → block (so the approval trail shows 'blocked')
             self.approvals.open(r.id, amount=r.amount, actor=NAME)
             self.approvals.block(r.id, actor=NAME, reason=worst.detail)
             return oc
 
-        # ---- Log any Class-B (e.g. SCHEMA_DRIFT) for observability ----- #
+        # ---- Class-B info ---- #
         for f in tr.flags:
             if f.reason_class == "B":
                 self.log.append(
-                    actor=NAME,
-                    action="record_exception",   # class-B info-logged, still proceeds
-                    record_id=r.id,
-                    payload={
-                        "reason_code": f.reason_code,
-                        "reason_class": "B",
-                        "detail": f.detail,
-                    },
+                    actor=NAME, action="record_exception", record_id=r.id,
+                    payload={"reason_code": f.reason_code, "reason_class": "B",
+                             "detail": f.detail},
                 )
 
-        # ---- CLEAN PATH: Orchestrator -> Worker -> Verifier ------------ #
+        # ---- CLEAN PATH: Orchestrator -> Worker -> Verifier ---- #
         self._span(r.id, NAME, status="routed")
-
-        # Open approval FSM
         self.approvals.open(r.id, amount=r.amount, actor=NAME)
 
-        # ---- Worker draft (with escalation retry on verifier fail) ----- #
+        # Import here to avoid circular deps in earlier steps
+        from agents.worker import draft_with_transcript
+        from agents.model_router import ModelRouter
+        router = ModelRouter()
+
         MAX_ATTEMPTS = 2
         escalate = False
         draft = None
         verdict = None
+        transcript_hash = None
+        delivered_fields_hash = None
+
         for attempt in range(1, MAX_ATTEMPTS + 1):
-            draft = worker.draft(r, escalate=escalate)
+            draft, transcript_hash, delivered_fields_hash = draft_with_transcript(
+                r, escalate=escalate, router=router
+            )
             oc.total_cost_usd += draft.cost_usd
             oc.total_latency_ms += draft.latency_ms
             oc.steps_used += 1
 
-            # Budget check
-            if oc.total_cost_usd > self.budget.max_cost_usd \
-               or oc.steps_used > self.budget.max_steps \
-               or oc.total_latency_ms > self.budget.max_latency_ms:
-                self._span(
-                    r.id, worker.NAME, status="killed",
-                    model=draft.model_used, prompt_version=draft.prompt_version,
-                    tokens_in=draft.tokens_in, tokens_out=draft.tokens_out,
-                    cost_usd=draft.cost_usd, latency_ms=draft.latency_ms,
-                    retries=attempt - 1,
-                )
+            # Budget guard
+            if (oc.total_cost_usd > self.budget.max_cost_usd
+                    or oc.steps_used > self.budget.max_steps
+                    or oc.total_latency_ms > self.budget.max_latency_ms):
+                self._span(r.id, worker.NAME, status="killed",
+                           model=draft.model_used, prompt_version=draft.prompt_version,
+                           tokens_in=draft.tokens_in, tokens_out=draft.tokens_out,
+                           cost_usd=draft.cost_usd, latency_ms=draft.latency_ms,
+                           retries=attempt - 1, transcript_hash=transcript_hash)
                 oc.status = "exception"
                 oc.reason_code = "BUDGET_EXCEEDED"
                 oc.reason_class = "A"
                 self.log.append(
                     actor=NAME, action="record_exception", record_id=r.id,
-                    payload={
-                        "reason_code": "BUDGET_EXCEEDED", "reason_class": "A",
-                        "detail": f"per-record budget exceeded (cost={oc.total_cost_usd:.4f})",
-                    },
+                    payload={"reason_code": "BUDGET_EXCEEDED", "reason_class": "A",
+                             "detail": f"budget exceeded (cost={oc.total_cost_usd:.4f})"},
                 )
                 self.approvals.block(r.id, actor=NAME, reason="budget exceeded")
                 return oc
 
-            # Emit worker span
+            # Emit worker span with REAL transcript_hash
             self._span(
                 r.id, worker.NAME,
                 status="ok" if attempt == 1 else "retried",
@@ -229,69 +220,51 @@ class Orchestrator:
                 tokens_in=draft.tokens_in, tokens_out=draft.tokens_out,
                 cost_usd=draft.cost_usd, latency_ms=draft.latency_ms,
                 retries=attempt - 1,
-                transcript_hash=None,  # real transcript hash lands in Step 5
+                transcript_hash=transcript_hash,
             )
 
-            # Move to review
             if attempt == 1:
                 self.approvals.submit_for_review(r.id, actor=worker.NAME)
 
-            # ---- Verifier: independent check --------------------------- #
+            # Verifier
             verdict = verifier.verify(r, draft)
             oc.total_cost_usd += verdict.cost_usd
             oc.total_latency_ms += verdict.latency_ms
             oc.steps_used += 1
 
             if verdict.verdict == "pass":
-                self._span(
-                    r.id, verifier.NAME,
-                    status="ok",
-                    model=verdict.model_used, prompt_version=verdict.prompt_version,
-                    tokens_in=verdict.tokens_in, tokens_out=verdict.tokens_out,
-                    cost_usd=verdict.cost_usd, latency_ms=verdict.latency_ms,
-                    verdict="pass",
-                )
-                break  # good draft, exit retry loop
+                self._span(r.id, verifier.NAME, status="ok",
+                           model=verdict.model_used, prompt_version=verdict.prompt_version,
+                           tokens_in=verdict.tokens_in, tokens_out=verdict.tokens_out,
+                           cost_usd=verdict.cost_usd, latency_ms=verdict.latency_ms,
+                           verdict="pass")
+                break
             else:
-                # Verifier OVERRULED the Worker
-                self._span(
-                    r.id, verifier.NAME,
-                    status="overruled",
-                    model=verdict.model_used, prompt_version=verdict.prompt_version,
-                    tokens_in=verdict.tokens_in, tokens_out=verdict.tokens_out,
-                    cost_usd=verdict.cost_usd, latency_ms=verdict.latency_ms,
-                    verdict="fail",
-                )
+                self._span(r.id, verifier.NAME, status="overruled",
+                           model=verdict.model_used, prompt_version=verdict.prompt_version,
+                           tokens_in=verdict.tokens_in, tokens_out=verdict.tokens_out,
+                           cost_usd=verdict.cost_usd, latency_ms=verdict.latency_ms,
+                           verdict="fail")
                 if attempt < MAX_ATTEMPTS:
-                    escalate = True  # try again with strong model
+                    escalate = True
                 else:
-                    # Give up: route to human via exception queue
                     oc.status = "exception"
                     oc.reason_code = verdict.reason_code or "AGENT_HALLUCINATION"
                     oc.reason_class = "A"
                     self.log.append(
                         actor=NAME, action="record_exception", record_id=r.id,
-                        payload={
-                            "reason_code": oc.reason_code, "reason_class": "A",
-                            "detail": f"verifier overruled worker after {MAX_ATTEMPTS} attempts; "
-                                      f"findings={verdict.findings}",
-                        },
+                        payload={"reason_code": oc.reason_code, "reason_class": "A",
+                                 "detail": f"verifier overruled after {MAX_ATTEMPTS} attempts; "
+                                           f"findings={verdict.findings}"},
                     )
                     self.approvals.block(r.id, actor=NAME, reason="verifier overrule; needs human")
                     return oc
 
-        # ---- Auto-approve as partner + amendment approver -------------- #
-        # (In production the operator CLI does this; for the automated demo
-        #  we simulate both approvers here. probe-approval tests the refusal path.)
         assert draft is not None and verdict is not None
 
-        self.approvals.approve(
-            r.id, actor="partner:auto",
-            role="partner",
-            reason="verifier pass; auto-approved by demo pipeline",
-        )
-
-        # Amendment: 2nd approver required for high-value
+        # Approvals (auto in demo mode; operator CLI handles manual mode)
+        self.approvals.approve(r.id, actor="partner:auto", role="partner",
+                               reason="verifier pass; auto-approved by demo pipeline")
         if self.approvals.amendment.requires_second_approval(r.amount):
             self.approvals.approve(
                 r.id,
@@ -301,43 +274,27 @@ class Orchestrator:
                        f"amendment {self.log.case_id}",
             )
 
-        # ---- Attempt server-side delivery ------------------------------ #
         ok, why = self.approvals.attempt_deliver(r.id, actor="delivery_svc")
         if not ok:
-            # This should not happen in the auto path — but log it if it does
             oc.status = "exception"
             oc.reason_code = "UNVERIFIED_ANOMALY"
             oc.reason_class = "A"
             self.log.append(
                 actor="delivery_svc", action="record_exception", record_id=r.id,
-                payload={
-                    "reason_code": "UNVERIFIED_ANOMALY",
-                    "reason_class": "A",
-                    "detail": f"delivery refused: {why}",
-                },
+                payload={"reason_code": "UNVERIFIED_ANOMALY", "reason_class": "A",
+                         "detail": f"delivery refused: {why}"},
             )
             return oc
 
-        # ---- Delivered ------------------------------------------------- #
         oc.status = "delivered"
         oc.delivered_fields = draft.fields
-        oc.delivered_fields_hash = sha256_of(draft.fields)
-        # Step 5 will wire a real transcript hash; for now we deterministically
-        # hash the model_used+fields so tests still see something present
-        oc.transcript_hash = sha256_of({
-            "agent": worker.NAME,
-            "model": draft.model_used,
-            "response": draft.fields,
-        })
+        oc.delivered_fields_hash = delivered_fields_hash
+        oc.transcript_hash = transcript_hash
         self.log.append(
-            actor="delivery_svc",
-            action="record_delivered",
-            record_id=r.id,
-            payload={
-                "delivered_fields": draft.fields,
-                "delivered_fields_hash": oc.delivered_fields_hash,
-                "transcript_hash": oc.transcript_hash,
-            },
+            actor="delivery_svc", action="record_delivered", record_id=r.id,
+            payload={"delivered_fields": draft.fields,
+                     "delivered_fields_hash": delivered_fields_hash,
+                     "transcript_hash": transcript_hash},
         )
         return oc
 

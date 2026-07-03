@@ -1,0 +1,22 @@
+{
+  "agent": "verifier_v1",
+  "model": "gpt-4o-mini",
+  "prompt_version": "1.0",
+  "request": {
+    "system": "You are an independent accounting-quality reviewer. Compare a draft deliverable against its source record and detect ANY invented facts, wrong numbers, wrong dates, category mismatches, or structural problems. You have OVERRULE authority. Be strict. Return JSON only.",
+    "user": "Source record:\n{\"id\": \"REC-018\", \"owner\": \"r.ferreira\", \"deadline\": \"2026-08-03\", \"category\": \"REVIEW\", \"amount\": 5150.0, \"notes\": \"Routine review.\"}\n\nDraft to review:\n{\"record_id\": \"REC-018\", \"engagement_type\": \"REVIEW\", \"title\": \"Review — REC-018\", \"body\": \"Quarterly Review Memo\\n\\nThis memo covers the quarterly review deliverable identified above. Owner r.ferreira will produce the review packet by 2026-08-03. Engagement fee for this cycle: $5,150.00.\", \"amount\": 5150.0, \"owner\": \"r.ferreira\", \"deadline\": \"2026-08-03\", \"requires_compliance_review\": false, \"_model_tier\": \"cheap\"}\n\nCheck for:\n  1. amount mismatch (draft.amount must equal source.amount)\n  2. owner/deadline echoed verbatim\n  3. engagement_type matches source.category\n  4. body has no invented client names, sums, or dates\n  5. body is professional and >= 20 chars\n\nReturn JSON with keys:\n  {\n    \"verdict\": \"pass\" | \"fail\" | \"needs_human\",\n    \"reason_code\": null | \"AGENT_HALLUCINATION\" | \"AGENT_MALFORMED\",\n    \"findings\": [array of short strings]\n  }"
+  },
+  "response": {
+    "verdict": "pass",
+    "reason_code": null,
+    "findings": [],
+    "checked_record_id": "REC-018",
+    "_worker_model_tier": "cheap"
+  },
+  "response_hash": "sha256:4d9864708a713760b21b7046a508a3c7f44841922fc3e8ed6e4d5128202447e1",
+  "delivered_fields_hash": "sha256:4d9864708a713760b21b7046a508a3c7f44841922fc3e8ed6e4d5128202447e1",
+  "tokens_in": 180,
+  "tokens_out": 20,
+  "cost_usd": 5e-05,
+  "latency_ms": 200.0
+}

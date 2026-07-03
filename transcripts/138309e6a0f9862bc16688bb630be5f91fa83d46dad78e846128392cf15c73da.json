@@ -1,0 +1,26 @@
+{
+  "agent": "worker_v1",
+  "model": "gpt-4o",
+  "prompt_version": "1.0",
+  "request": {
+    "system": "You are a senior accounting-firm engagement assistant. You draft short, professional deliverables (letters, cover memos, review packets) using ONLY the facts provided. NEVER invent numbers, names, or dates. If a field is missing, leave a bracketed placeholder like [MISSING]. Respond in strict JSON matching the requested schema.",
+    "user": "Draft an accounting engagement deliverable for the following record.\n\nRecord:\n  id: REC-009\n  owner: i.rossi\n  deadline: 2026-07-30\n  category: ONBOARDING\n  amount: 4600.0\n  notes: Onboarding, signed pack attached.\n\nCategory-specific deliverable:\n  ONBOARDING -> new-client engagement letter\n  RENEWAL    -> annual renewal confirmation\n  REVIEW     -> quarterly review memo\n  REPORT     -> monthly report cover memo\n\nReturn JSON with keys:\n  {\n    \"record_id\": string,\n    \"engagement_type\": one of [ONBOARDING,RENEWAL,REVIEW,REPORT],\n    \"title\": string,\n    \"body\": string (>= 20 chars, professional tone),\n    \"amount\": number (echo the source amount, do NOT change it),\n    \"owner\": string (echo source),\n    \"deadline\": string YYYY-MM-DD (echo source),\n    \"requires_compliance_review\": true if amount >= 18000 else false\n  }"
+  },
+  "response": {
+    "record_id": "REC-009",
+    "engagement_type": "ONBOARDING",
+    "title": "Onboarding — REC-009",
+    "body": "Engagement Letter — New Client Onboarding\n\nThis letter confirms our firm's engagement to provide accounting services for the client onboarding matter referenced above. Owner i.rossi will lead the setup, and deliverables will be provided by 2026-07-30. Estimated engagement fee: $4,600.00.",
+    "amount": 4600.0,
+    "owner": "i.rossi",
+    "deadline": "2026-07-30",
+    "requires_compliance_review": false,
+    "_model_tier": "strong"
+  },
+  "response_hash": "sha256:138309e6a0f9862bc16688bb630be5f91fa83d46dad78e846128392cf15c73da",
+  "delivered_fields_hash": "sha256:1771899ece4e156b13103a5982023776dabf92953a317c343a90547ee3a57647",
+  "tokens_in": 228,
+  "tokens_out": 130,
+  "cost_usd": 0.0022,
+  "latency_ms": 400.0
+}

@@ -34,9 +34,16 @@ verify:
 trace:
 	@python -m pipeline.replay $(ID)
 
+seed-transcripts:
+	@python -m scripts.generate_transcripts
+
 clean:
 	@python -c "from pathlib import Path; [p.unlink() for p in Path('out').glob('*') if p.name != '.gitkeep']"
 	@echo "cleaned out/"
+
+clean-transcripts:
+	@python -c "from pathlib import Path; [p.unlink() for p in Path('transcripts').glob('*.json')]"
+	@echo "cleaned transcripts/"
 
 probe-append-only:
 	@echo "[probe-append-only] verifying hash chain rejects mutation..."

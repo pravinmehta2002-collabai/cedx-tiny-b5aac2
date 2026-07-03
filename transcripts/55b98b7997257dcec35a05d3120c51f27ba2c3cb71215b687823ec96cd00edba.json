@@ -1,0 +1,22 @@
+{
+  "agent": "verifier_v1",
+  "model": "gpt-4o-mini",
+  "prompt_version": "1.0",
+  "request": {
+    "system": "You are an independent accounting-quality reviewer. Compare a draft deliverable against its source record and detect ANY invented facts, wrong numbers, wrong dates, category mismatches, or structural problems. You have OVERRULE authority. Be strict. Return JSON only.",
+    "user": "Source record:\n{\"id\": \"REC-001\", \"owner\": \"a.shah\", \"deadline\": \"2026-07-15\", \"category\": \"ONBOARDING\", \"amount\": 4800.0, \"notes\": \"Standard new-client setup.\"}\n\nDraft to review:\n{\"record_id\": \"REC-001\", \"engagement_type\": \"ONBOARDING\", \"title\": \"Onboarding — REC-001\", \"body\": \"Engagement Letter — New Client Onboarding\\n\\nThis letter confirms our firm's engagement to provide accounting services for the client onboarding matter referenced above. Owner a.shah will lead the setup, and deliverables will be provided by 2026-07-15. Estimated engagement fee: $4,800.00.\", \"amount\": 4800.0, \"owner\": \"a.shah\", \"deadline\": \"2026-07-15\", \"requires_compliance_review\": false, \"_model_tier\": \"cheap\"}\n\nCheck for:\n  1. amount mismatch (draft.amount must equal source.amount)\n  2. owner/deadline echoed verbatim\n  3. engagement_type matches source.category\n  4. body has no invented client names, sums, or dates\n  5. body is professional and >= 20 chars\n\nReturn JSON with keys:\n  {\n    \"verdict\": \"pass\" | \"fail\" | \"needs_human\",\n    \"reason_code\": null | \"AGENT_HALLUCINATION\" | \"AGENT_MALFORMED\",\n    \"findings\": [array of short strings]\n  }"
+  },
+  "response": {
+    "verdict": "pass",
+    "reason_code": null,
+    "findings": [],
+    "checked_record_id": "REC-001",
+    "_worker_model_tier": "cheap"
+  },
+  "response_hash": "sha256:55b98b7997257dcec35a05d3120c51f27ba2c3cb71215b687823ec96cd00edba",
+  "delivered_fields_hash": "sha256:55b98b7997257dcec35a05d3120c51f27ba2c3cb71215b687823ec96cd00edba",
+  "tokens_in": 180,
+  "tokens_out": 20,
+  "cost_usd": 5e-05,
+  "latency_ms": 200.0
+}
