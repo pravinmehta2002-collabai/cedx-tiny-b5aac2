@@ -1,0 +1,75 @@
+# Declarative field mapping — canonical shape for the pipeline.
+# ANY inbound field name in the LHS lists maps to the canonical name on the right.
+# When we see a non-canonical name, we log SCHEMA_DRIFT and still deliver.
+#
+# Held-out data WILL rename fields — this is why the mapping is declarative,
+# not hardcoded in Python.
+
+canonical_fields:
+  id:
+    aliases: [id, record_id, rec_id, ticket_id, ref, reference]
+    required: true
+    type: string
+
+  owner:
+    aliases: [owner, assigned_to, assignee, staff, accountant, preparer]
+    required: true
+    type: string
+
+  deadline:
+    aliases: [deadline, due, due_date, target_date, expected_by]
+    required: true
+    type: date
+
+  category:
+    aliases: [category, type, engagement_type, work_type, kind]
+    required: true
+    type: enum
+    allowed_values: [ONBOARDING, RENEWAL, REVIEW, REPORT]
+
+  amount:
+    aliases: [amount, amt, value, fee, engagement_fee, total, price]
+    required: true
+    type: number
+
+  version:
+    aliases: [version, ver, v, revision]
+    required: false
+    type: integer
+    default: 1
+
+  notes:
+    aliases: [notes, note, comment, comments, description, memo]
+    required: false
+    type: string
+    default: ""
+
+# Prompt-injection patterns (case-insensitive substring match on notes).
+# Rule-based first line of defense (Verifier is second line).
+injection_patterns:
+  - "approve immediately"
+  - "skip review"
+  - "ignore your rules"
+  - "ignore previous instructions"
+  - "ignore all previous"
+  - "disregard the above"
+  - "you are now"
+  - "system prompt"
+  - "override compliance"
+  - "bypass approval"
+  - "jailbreak"
+  - "dan mode"
+
+# Outlier detection: robust statistical, NOT hardcoded ==.
+outlier_policy:
+  method: mad          # Median Absolute Deviation (robust to outliers)
+  threshold_multiplier: 6.0   # amount is outlier if |x - median| > 6 * MAD
+  min_records_required: 5     # need at least 5 records to compute stats
+  hard_ceiling: 500000        # absolute sanity ceiling (defense-in-depth)
+  hard_floor: 0               # negative amounts are invalid
+
+# Ambiguity signals that trigger LOW_CONFIDENCE (route to human).
+low_confidence_signals:
+  notes_too_vague_max_chars: 3
+  notes_contains_todo: ["tbd", "todo", "unclear", "?", "??", "???"]
+  missing_category_but_notes_uninformative: true

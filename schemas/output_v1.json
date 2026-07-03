@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cedxsystems.com/hiring/output_v1.json",
+  "title": "CEDX Accounting Engagement Deliverable v1",
+  "type": "object",
+  "required": ["record_id", "engagement_type", "title", "body", "amount", "owner", "deadline"],
+  "additionalProperties": false,
+  "properties": {
+    "record_id": { "type": "string", "pattern": "^REC-[0-9]{3,}$" },
+    "engagement_type": {
+      "type": "string",
+      "enum": ["ONBOARDING", "RENEWAL", "REVIEW", "REPORT"]
+    },
+    "title": { "type": "string", "minLength": 5, "maxLength": 200 },
+    "body": { "type": "string", "minLength": 20, "maxLength": 4000 },
+    "amount": { "type": "number", "minimum": 0 },
+    "owner": { "type": "string", "minLength": 1 },
+    "deadline": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "requires_compliance_review": { "type": "boolean" }
+  }
+}

@@ -26,8 +26,12 @@ help:
 	@echo "  make tracer-check           Sanity-check the tracer bullet scaffold"
 
 demo:
-	@echo "[demo] Full pipeline not yet wired (tracer-bullet commit)."
-	@python -c "from agents import ROSTER; import json; print('Agent roster:'); print(json.dumps(ROSTER, indent=2))"
+	@echo "[demo] Stage 1-2 pipeline (tracer bullet + intake + normalize + exceptions)"
+	@python -m pipeline.intake
+	@echo ""
+	@python -m pipeline.normalize
+	@echo ""
+	@python -m pipeline.exceptions
 
 verify:
 	python verify_audit.py --audit out/audit.json --transcripts transcripts --schema audit.schema.json
