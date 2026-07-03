@@ -8,12 +8,9 @@ services:
       SEED_DIR: /app/seed
       OUT_DIR: /app/out
       REPLAY_LLM: "true"
-      PIPELINE_VERSION: "0.1.0-tracer"
+      PIPELINE_VERSION: "0.4.0-step4"
     volumes:
-      # Mount seed read-only (do not edit)
       - ./seed:/app/seed:ro
-      # Mount out for inspecting artifacts on host
       - ./out:/app/out
-      # Mount transcripts (used in REPLAY mode)
       - ./transcripts:/app/transcripts:ro
-    command: make demo
+    command: python -m pipeline.run

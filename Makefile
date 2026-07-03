@@ -26,12 +26,32 @@ help:
 	@echo "  make tracer-check           Sanity-check the tracer bullet scaffold"
 
 demo:
-	@echo "[demo] Stage 1-2 pipeline (tracer bullet + intake + normalize + exceptions)"
-	@python -m pipeline.intake
-	@echo ""
-	@python -m pipeline.normalize
-	@echo ""
-	@python -m pipeline.exceptions
+	@python -m pipeline.run
+
+verify:
+	@python verify_audit.py --audit out/audit.json --transcripts transcripts --schema audit.schema.json
+
+trace:
+	@python -m pipeline.replay $(ID)
+
+clean:
+	@python -c "from pathlib import Path; [p.unlink() for p in Path('out').glob('*') if p.name != '.gitkeep']"
+	@echo "cleaned out/"
+
+probe-append-only:
+	@echo "[probe-append-only] verifying hash chain rejects mutation..."
+	@python -c "from pipeline.audit import AuditLogger; \
+from pathlib import Path; \
+import os; \
+log = AuditLogger(Path(os.environ.get('OUT_DIR','out')), 'CEDX-B5AAC2', '0.2.0-step3'); \
+print('chain valid before mutation:', log.verify_chain()); \
+p = log.events_path; \
+data = p.read_text(encoding='utf-8').splitlines(); \
+tampered = data[0].replace('pipeline','TAMPERED') if data else ''; \
+p.write_text('\\n'.join([tampered] + data[1:]) + '\\n', encoding='utf-8') if data else None; \
+ok = log.verify_chain(); \
+print('chain valid after mutation :', ok); \
+import sys; sys.exit(0 if not ok else 1)"
 
 verify:
 	python verify_audit.py --audit out/audit.json --transcripts transcripts --schema audit.schema.json
